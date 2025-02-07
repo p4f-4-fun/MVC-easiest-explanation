@@ -1,0 +1,204 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="ie=edge">
+    <title>MVC easiest explanation w/ random joke API | JS</title>
+    <style>
+        * { box-sizing: border-box; margin: 0; margin-block: 0; margin-inline: 0; padding: 0; padding-block: 0; padding-inline: 0; }
+        :root {
+            --color-accent: rgb(124, 124, 124);
+            --color-black: rgb(49, 49, 49);
+            --color-white: rgb(249, 249, 249);
+        }
+        body { 
+            align-items: center;
+            background: var(--color-black);
+            color: var(--color-white); 
+            display: flex;
+            height: 100vh;
+            justify-content: center;
+            width: 100vw;
+        } 
+        .output__container {
+            align-items: center;
+            background: var(--color-accent);
+            border: 4px solid var(--color-white);
+            display: flex;
+            flex-direction: column;
+            height: clamp(25rem, 75vh, 100vh);
+            justify-content: center;
+            padding: 4rem;
+            row-gap: 2rem;
+            width: clamp(25rem, 40rem, 80vw);
+        }
+        .output__content {
+            font-optical-sizing: auto;
+            font-size: 1.4rem;
+            font-style: italic;
+            font-weight: bold;
+            max-height: 100%;
+            overflow-wrap: break-word;
+            overflow: auto;
+            max-width: 100%;
+        }
+        .output__content__span--error {
+            font-style: normal;
+        }
+        button {
+            background: var(--color-black);
+            border: none;
+            color: var(--color-white);
+            cursor: pointer;
+            font-weight: bold;
+            padding: 1rem 2rem;
+        }
+        .button--next {
+            display: block;
+            box-shadow: 4px 4px 0px 0px var(--color-white);
+        }
+    </style>
+</head>
+<body>
+    <main>
+        <article class="output__container">
+            <h2>Chuck Norris random Jokes</h2>
+            <span class="output__content">
+                <label for="output__content__label--loading">Loading: </label>
+                <progress id="output__content__progress--loading" value="75" max="100">75%</progress>
+            </span>
+            <button id="output__button" class="button button--next" type="button">Next</button>
+        </article>
+    </main>
+    <script>
+        "use strict";
+
+        const callbackHandle = {
+            isErrorStatus: false,
+            resolveHandler: (data) => data.value,
+            rejectHandler: function () { this.isErrorStatus = true; },
+        };
+        
+        const getRandomJoke = {
+            apiUrl: "https://api.chucknorris.io/jokes/random",
+            $outputHandler: null,
+            clearView: function () {
+                this.$outputHandler.innerHTML = "";
+            },
+            createLoadingElement: () => {
+                const loadingElement = document.createDocumentFragment();
+
+                const labelElement = document.createElement("label");
+                labelElement.setAttribute("for", "output__content__label--loading");
+                labelElement.textContent = "Loading progress: ";
+
+                const progressElement = document.createElement("progress");
+                progressElement.setAttribute("id", "output__content__progress--loading");
+                progressElement.setAttribute("value", "75");
+                progressElement.setAttribute("max", "100");
+                progressElement.textContent = "75%";
+
+                loadingElement.append(labelElement, progressElement);
+
+                return loadingElement;
+            },
+            createViewElement: (viewDataJoke, isErrorStatus) => {
+                const viewElement = document.createDocumentFragment();
+
+                if (isErrorStatus && isErrorStatus === true) {
+                    const spanErrorStatusElement = document.createElement("span");
+                    spanErrorStatusElement.classList.add("output__content__span--error")
+                    //spanErrorStatusElement.dataset.errorStatus = true;
+                    spanErrorStatusElement.textContent = viewDataJoke;
+
+                    viewElement.appendChild(spanErrorStatusElement);
+                    return viewElement;
+                }
+
+                const quoteElement = document.createElement("q");
+                quoteElement.textContent = viewDataJoke;
+
+                viewElement.appendChild(quoteElement);
+
+                return viewElement;
+            },
+            renderViewLoading: function () {
+                this.clearView();
+                this.$outputHandler.appendChild(this.createLoadingElement());
+            },
+            renderView: function (viewDataJoke, isErrorStatus) {
+                this.clearView();
+                this.$outputHandler.appendChild(this.createViewElement(viewDataJoke, isErrorStatus));
+            },
+            randomJokeView: function (viewDataJoke, isErrorStatus) {
+                // Controller <-> View data exchange, ready to render view so execute renderView
+                this.renderView(viewDataJoke, isErrorStatus);
+            },
+            randomJokeModel: async function (resolve, reject) {
+                // Model <-> Controller data exchanging
+                try { 
+                    // Fetch and parse random joke from external free api
+                    const fetchedJoke = await fetch(this.apiUrl);
+                    const parsedJoke = await fetchedJoke.json();
+                    
+                    // Everything's OK so resolved
+                    return resolve(parsedJoke);
+                } catch (error) {
+                    // If not ok with something so reject with error message
+                    // Invoke and Bind reject (error status) callback method to his object, to being able use THIS keyword as a pointer on his object (interally),
+                    reject.bind(callbackHandle.rejectHandler());
+                    return error.message;
+                }
+            },
+            randomJokeController: async function () {
+                // Controller <-> Model data exchange
+                // RESOLVE AND REJECT CALLBACK MECHANISM HERE its just for show, don't need them here,
+                // because those callbacks don't do anything special and its just pass-through, nothing else,
+                // but its good to know we can use them and act on something in our callbacks by functions/ methods result
+                const getResponse = await this.randomJokeModel(callbackHandle.resolveHandler, callbackHandle.rejectHandler);
+
+                // Model <-> Controller data exchanged now so fill the view with data (joke or error)
+                if (callbackHandle.isErrorStatus && callbackHandle.isErrorStatus === true) {
+                    // Error state response
+                    this.randomJokeView(`~ ${getResponse} ~ maybe try Next-button or refresh the page and maybe it will work...`, callbackHandle.isErrorStatus);
+                    return;
+                }
+                
+                // If api not failed = normal state response - go straight ahead to View methods
+                this.randomJokeView(getResponse, false);
+            },
+            eventLoadNextJoke: function () {
+                this.renderViewLoading();
+                this.randomJokeController();
+            },
+            Init: function () {
+                // Bind output DOM Element to outputHandler on Init. Do this here not when object and his properties are sets up by browser JS engine,
+                // (and even despite of the script tag is under the HTML content) to be 100% sure the DOM will be completely loaded,
+                // when querySelector will looking for the output element
+                this.$outputHandler = (() => document.querySelector(".output__content"))(); // IIFE, DOM object with Element, assignment
+                if (!this.$outputHandler) {
+                    const errorMsg = "DOM (page) is not loaded completely and/ or DOM structure is broken!";
+
+                    console.error(errorMsg);
+                    alert(errorMsg);
+
+                    return;
+                };
+            
+                // If outputHandler binded without an errors - Init Controller
+                this.randomJokeController();
+
+                // Event handling button NEXT (caught and referrence explicit by his DOM ID attribute from HTML)
+                output__button.addEventListener("click", () => this.eventLoadNextJoke());
+            },
+        };
+        
+        // Onload function gives you /this/ bind to event, so it's required to bind Init method again to his object
+        const initBindHandler = () => getRandomJoke.Init.bind(getRandomJoke.Init());
+        window.onload = initBindHandler;
+    </script>
+</body>
+</html>
+
+
