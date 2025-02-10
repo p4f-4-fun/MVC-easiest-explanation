@@ -81,7 +81,6 @@
         };
         
         const getRandomJoke = {
-            apiUrl: "https://api.chucknorris.io/jokes/random",
             $outputHandler: null,
             clearView: function () {
                 this.$outputHandler.innerHTML = "";
@@ -137,18 +136,20 @@
             },
             randomJokeModel: async function (resolve, reject) {
                 // Model <-> Controller data exchanging
+                const apiUrl = "https://api.chucknorris.io/jokes/random";
+                
                 try { 
                     // Fetch and parse random joke from external free api
-                    const fetchedJoke = await fetch(this.apiUrl);
+                    const fetchedJoke = await fetch(apiUrl);
                     const parsedJoke = await fetchedJoke.json();
                     
                     // Everything's OK so resolved
                     return resolve(parsedJoke);
-                } catch (error) {
+                } catch (Error) {
                     // If not ok with something so reject with error message
                     // Invoke and Bind reject (error status) callback method to his object, to being able use THIS keyword as a pointer on his object (interally),
                     reject.bind(callbackHandle.rejectHandler());
-                    return error.message;
+                    return Error.message;
                 }
             },
             randomJokeController: async function () {
